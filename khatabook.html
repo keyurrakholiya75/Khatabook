@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khatabook - Transaction Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #007bff;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: block;
+        }
+        select, input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+        }
+        button {
+            padding: 12px 20px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+        button.add {
+            background-color: #28a745;
+        }
+        button.add:hover {
+            background-color: #218838;
+        }
+        button.give {
+            background-color: #dc3545;
+        }
+        button.give:hover {
+            background-color: #c82333;
+        }
+        button.show {
+            background-color: #007bff;
+        }
+        button.show:hover {
+            background-color: #0056b3;
+        }
+        .person-list, .transaction-list {
+            margin-top: 20px;
+        }
+        .person-item, .transaction-item {
+            padding: 12px;
+            background-color: #f1f3f5;
+            margin: 10px 0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .transaction-item.give {
+            background-color: #f8d7da;
+        }
+        .transaction-item.got {
+            background-color: #d4edda;
+        }
+        .transaction-actions button {
+            margin-left: 5px;
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .transaction-actions button.edit {
+            background-color: #ffc107;
+            color: white;
+        }
+        .transaction-actions button.delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        /* Hide the transaction manager initially */
+        #khatabookApp {
+            display: none;
+        }
+
+        /* Balance Styling */
+        .person-balance {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        /* Add the styling for Levana and Apvana totals */
+        .total {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+        .levana-total {
+            color: green;
+        }
+        .apvana-total {
+            color: red;
+        }
+        /* Same styling as before */
+    </style>
+</head>
+<body>
+
+    <!-- Khatabook Button -->
+    <div style="text-align: center; margin-top: 100px;">
+        <button class="show" onclick="showKhatabookApp()">Khatabook</button>
+    </div>
+
+    <!-- Khatabook Application -->
+    <div id="khatabookApp" class="container">
+        <h1>Khatabook - Manage Transactions</h1>
+
+        <!-- Add Person Section -->
+        <div class="form-group">
+            <label for="personName">Add a Person:</label>
+            <input type="text" id="personName" placeholder="Enter person name">
+            <button class="add" onclick="addPerson()">Add Person</button>
+        </div>
+
+        <!-- Total Levana and Apvana -->
+        <div class="total levana-total" id="levanaTotal">Total Levana: ₹0</div>
+        <div class="total apvana-total" id="apvanaTotal">Total Apvana: ₹0</div>
+
+        <!-- Person List -->
+        <div class="person-list" id="personList">
+            <h3>People</h3>
+        </div>
+
+        <!-- Transaction Section -->
+        <div class="form-group">
+            <label for="transactionPerson">Select Person:</label>
+            <select id="transactionPerson" onchange="filterTransactionsByPerson()">
+                <option value="">--Select Person--</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="transactionAmount">Amount:</label>
+            <input type="number" id="transactionAmount" placeholder="Enter amount">
+        </div>
+
+        <!-- Add Note Section -->
+        <div class="form-group">
+            <label for="transactionNote">Note:</label>
+            <input type="text" id="transactionNote" placeholder="Add a note (optional)">
+        </div>
+
+        <div class="form-group">
+            <label for="transactionType">Transaction Type:</label>
+            <select id="transactionType">
+                <option value="levana">Levana</option>
+                <option value="apvana">Apvana</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <button class="add" onclick="addTransaction()">Add Transaction</button>
+        </div>
+
+        <!-- Transaction List -->
+        <div class="transaction-list" id="transactionList">
+            <h3>Transactions</h3>
+        </div>
+    </div>
+
+    <script>
+        // Retrieve stored data from localStorage
+        let people = JSON.parse(localStorage.getItem('people')) || [];
+        let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+
+        // Function to show the Khatabook application
+        function showKhatabookApp() {
+            document.querySelector('div[style="text-align: center; margin-top: 100px;"]').style.display = 'none';
+            document.getElementById('khatabookApp').style.display = 'block';
+            renderPersonList();
+            renderTransactionList();
+            updateTotal();
+        }
+
+        // Add a new person
+        function addPerson() {
+            const personName = document.getElementById('personName').value.trim();
+            if (personName && !people.includes(personName)) {
+                people.push(personName);
+                localStorage.setItem('people', JSON.stringify(people)); // Save to localStorage
+                renderPersonList();
+                document.getElementById('personName').value = '';
+            }
+        }
+
+        // Render the list of people
+        function renderPersonList() {
+            const personList = document.getElementById('personList');
+            const transactionPersonSelect = document.getElementById('transactionPerson');
+
+            personList.innerHTML = '<h3>People</h3>';
+            transactionPersonSelect.innerHTML = '<option value="">--Select Person--</option>';
+
+            people.forEach(person => {
+                const personBalance = calculateBalance(person);
+                const personItem = document.createElement('div');
+                personItem.classList.add('person-item');
+                personItem.innerHTML = `
+                    <span class="person-balance">${personBalance >= 0 ? '+' : ''}${personBalance}</span>
+                    ${person}
+                    <button class="delete" onclick="removePerson('${person}')">Delete</button>
+                `;
+                personList.appendChild(personItem);
+
+                const option = document.createElement('option');
+                option.value = person;
+                option.textContent = person;
+                transactionPersonSelect.appendChild(option);
+            });
+        }
+
+        // Remove a person
+        function removePerson(person) {
+            const index = people.indexOf(person);
+            if (index > -1) {
+                people.splice(index, 1);
+                localStorage.setItem('people', JSON.stringify(people)); // Save to localStorage
+                renderPersonList();
+            }
+        }
+
+        // Add a new transaction
+        function addTransaction() {
+            const person = document.getElementById('transactionPerson').value;
+            const amount = parseFloat(document.getElementById('transactionAmount').value);
+            const type = document.getElementById('transactionType').value;
+            const note = document.getElementById('transactionNote').value.trim();
+
+            if (person && amount > 0) {
+                const transaction = { person, amount, type, note, id: Date.now() };
+                transactions.push(transaction);
+                localStorage.setItem('transactions', JSON.stringify(transactions)); // Save to localStorage
+                updateBalance(person, type, amount);
+                renderTransactionList();
+                renderPersonList();
+                updateTotal();  // Update totals
+                document.getElementById('transactionAmount').value = '';
+                document.getElementById('transactionNote').value = '';
+            }
+        }
+
+        // Update the balance of a person
+        function updateBalance(person, type, amount) {
+            let balance = parseFloat(localStorage.getItem(person)) || 0;
+            if (type === 'levana') {
+                balance += amount;
+            } else if (type === 'apvana') {
+                balance -= amount;
+            }
+            localStorage.setItem(person, balance);
+        }
+
+        // Calculate the balance of a person
+        function calculateBalance(person) {
+            const balance = parseFloat(localStorage.getItem(person)) || 0;
+            return balance;
+        }
+
+        // Render the transaction list for all transactions or filtered by selected person
+        function renderTransactionList() {
+            const transactionList = document.getElementById('transactionList');
+            const selectedPerson = document.getElementById('transactionPerson').value;
+
+            transactionList.innerHTML = '<h3>Transactions</h3>';
+
+            // Filter transactions by selected person if any
+            const filteredTransactions = selectedPerson
+                ? transactions.filter(transaction => transaction.person === selectedPerson)
+                : transactions;
+
+            filteredTransactions.forEach(transaction => {
+                const transactionItem = document.createElement('div');
+                transactionItem.classList.add('transaction-item', transaction.type);
+                transactionItem.innerHTML = `
+                    ${transaction.person} - ₹${transaction.amount} (${transaction.type === 'levana' ? 'Received' : 'Paid'})
+                    ${transaction.note ? `<div><strong>Note:</strong> ${transaction.note}</div>` : ''}
+                    <div class="transaction-actions">
+                        <button class="edit" onclick="editTransaction(${transaction.id})">Edit</button>
+                        <button class="delete" onclick="deleteTransaction(${transaction.id})">Delete</button>
+                    </div>
+                `;
+                transactionList.appendChild(transactionItem);
+            });
+        }
+
+        // Edit a transaction
+        function editTransaction(id) {
+            const transaction = transactions.find(t => t.id === id);
+            if (transaction) {
+                document.getElementById('transactionPerson').value = transaction.person;
+                document.getElementById('transactionAmount').value = transaction.amount;
+                document.getElementById('transactionType').value = transaction.type;
+                document.getElementById('transactionNote').value = transaction.note;
+                deleteTransaction(id); // Remove the existing transaction
+            }
+        }
+
+        // Delete a transaction
+        function deleteTransaction(id) {
+            const index = transactions.findIndex(t => t.id === id);
+            if (index > -1) {
+                const transaction = transactions.splice(index, 1)[0];
+                localStorage.setItem('transactions', JSON.stringify(transactions)); // Save to localStorage
+                updateBalance(transaction.person, transaction.type === 'levana' ? 'apvana' : 'levana', transaction.amount);
+                renderTransactionList();
+                renderPersonList();
+                updateTotal();  // Update totals
+            }
+        }
+
+        // Filter transactions by selected person
+        function filterTransactionsByPerson() {
+            renderTransactionList();
+        }
+
+        // Update total Levana and Apvana amounts
+        function updateTotal() {
+            let levanaTotal = 0;
+            let apvanaTotal = 0;
+
+            transactions.forEach(transaction => {
+                if (transaction.type === 'levana') {
+                    levanaTotal += transaction.amount;
+                } else if (transaction.type === 'apvana') {
+                    apvanaTotal += transaction.amount;
+                }
+            });
+
+            document.getElementById('levanaTotal').textContent = `Total Levana: ₹${levanaTotal}`;
+            document.getElementById('apvanaTotal').textContent = `Total Apvana: ₹${apvanaTotal}`;
+        }
+
+        // Initial setup
+        if (people.length > 0 || transactions.length > 0) {
+            showKhatabookApp();
+        }
+    </script>
+
+</body>
+</html>
